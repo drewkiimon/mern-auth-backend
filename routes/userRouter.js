@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const bycrpt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const auth = require('../middleware/auth');
 const User = require('../models/userModel');
 
 
@@ -106,6 +107,48 @@ router.post('/login', async (req, res) => {
 
         // check jwt token on https://jwt.io/
 
+    } catch (err) {
+        res.status(500).send({
+            err: err.message
+        });
+    }
+});
+
+// need to be logged in, and only you can delete your account
+// middleware will run before this function
+
+router.delete('/delete', auth, async (req, res) => {
+    try {
+        const deletedUser = await User.findByIdAndDelete(req.user);
+
+        res.json(deletedUser);
+    } catch (err) {
+        res.status(500).send({
+            err: err.message
+        });
+    }
+});
+
+router.post('/tokenIsValid', async (req, res) => {
+    try {
+        const token = req.header('x-auth-token');
+
+        if (!token) {
+            return res.json(false);
+        }
+
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (!verified) {
+            return res.json(false);
+        }
+        const user = await User.findById(verified.id);
+
+        if (!user) {
+            return res.json(false);
+        }
+
+        return res.json(true);
     } catch (err) {
         res.status(500).send({
             err: err.message
