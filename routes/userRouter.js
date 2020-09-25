@@ -1,0 +1,116 @@
+const router = require('express').Router();
+const bycrpt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/userModel');
+
+
+router.post('/register', async (req, res) => {
+    try {
+        let {
+            email,
+            password,
+            passwordCheck,
+            displayName
+        } = req.body;
+
+        // validate
+        if (!email || !password || !passwordCheck)
+            return res.status(400).json({
+                msg: 'Not all fields have been entered'
+            });
+
+        if (password.length < 5)
+            return res.status(400).json({
+                msg: 'Passwords needs to be at least 5 characters long'
+            });
+
+        if (password !== passwordCheck)
+            return res.status(400).json({
+                msg: 'Enter the same password twice'
+            });
+
+        const existingUser = await User.findOne({
+            email
+        });
+
+        if (existingUser)
+            return res.status(400).json({
+                msg: 'Account with this email already exists'
+            });
+
+        if (!displayName) displayName = email;
+
+        // hashing function to secure passwords
+        const salt = await bycrpt.genSalt();
+        const passwordHash = await bycrpt.hash(password, salt);
+
+        // Using Mongoose Schema
+        const newUser = new User({
+            email,
+            password: passwordHash,
+            displayName
+        });
+
+        const savedUser = await newUser.save();
+        res.json(savedUser);
+    } catch (err) {
+        res.status(500).send({
+            err: err.message
+        });
+    }
+});
+
+// logging in --> comparing credentials with what's in database
+router.post('/login', async (req, res) => {
+    try {
+        const {
+            email,
+            password
+        } = req.body;
+
+        // validate
+        if (!email || !password)
+            return res.status(400).json({
+                msg: 'Not all fields have been entered'
+            });
+
+        const user = await User.findOne({
+            email
+        });
+
+        if (!user)
+            return res.status(400).json({
+                msg: 'No account with this email has been registered'
+            });
+        // password --> just inputted, user.password --> hashed password 
+        const isMatch = await bycrpt.compare(password, user.password);
+
+        if (!isMatch)
+            return res.status(400).json({
+                msg: 'Invalid credentials. Please try again.'
+            });
+
+        // User is clear to go, so get jsonwebtoken (jwt)
+        const token = jwt.sign({
+            id: user._id
+        }, process.env.JWT_SECRET);
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
+                displayName: user.displayName,
+                email: user.email
+            }
+        });
+
+        // check jwt token on https://jwt.io/
+
+    } catch (err) {
+        res.status(500).send({
+            err: err.message
+        });
+    }
+});
+
+module.exports = router;
