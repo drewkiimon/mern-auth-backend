@@ -1,159 +1,152 @@
-const router = require('express').Router();
-const bycrpt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const auth = require('../middleware/auth');
-const User = require('../models/userModel');
+const router = require("express").Router();
+const bycrpt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const auth = require("../middleware/auth");
+const User = require("../models/userModel");
 
+router.post("/register", async (req, res) => {
+	try {
+		let { email, password, passwordCheck, displayName } = req.body;
 
-router.post('/register', async (req, res) => {
-    try {
-        let {
-            email,
-            password,
-            passwordCheck,
-            displayName
-        } = req.body;
+		// validate
+		if (!email || !password || !passwordCheck)
+			return res.status(400).json({
+				msg: "Not all fields have been entered",
+			});
 
-        // validate
-        if (!email || !password || !passwordCheck)
-            return res.status(400).json({
-                msg: 'Not all fields have been entered'
-            });
+		if (password.length < 5)
+			return res.status(400).json({
+				msg: "Passwords needs to be at least 5 characters long",
+			});
 
-        if (password.length < 5)
-            return res.status(400).json({
-                msg: 'Passwords needs to be at least 5 characters long'
-            });
+		if (password !== passwordCheck)
+			return res.status(400).json({
+				msg: "Enter the same password twice",
+			});
 
-        if (password !== passwordCheck)
-            return res.status(400).json({
-                msg: 'Enter the same password twice'
-            });
+		const existingUser = await User.findOne({
+			email,
+		});
 
-        const existingUser = await User.findOne({
-            email
-        });
+		if (existingUser)
+			return res.status(400).json({
+				msg: "Account with this email already exists",
+			});
 
-        if (existingUser)
-            return res.status(400).json({
-                msg: 'Account with this email already exists'
-            });
+		if (!displayName) displayName = email;
 
-        if (!displayName) displayName = email;
+		// hashing function to secure passwords
+		const salt = await bycrpt.genSalt();
+		const passwordHash = await bycrpt.hash(password, salt);
 
-        // hashing function to secure passwords
-        const salt = await bycrpt.genSalt();
-        const passwordHash = await bycrpt.hash(password, salt);
+		// Using Mongoose Schema
+		const newUser = new User({
+			email,
+			password: passwordHash,
+			displayName,
+		});
 
-        // Using Mongoose Schema
-        const newUser = new User({
-            email,
-            password: passwordHash,
-            displayName
-        });
-
-        const savedUser = await newUser.save();
-        res.json(savedUser);
-    } catch (err) {
-        res.status(500).send({
-            err: err.message
-        });
-    }
+		const savedUser = await newUser.save();
+		res.json(savedUser);
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
 });
 
 // logging in --> comparing credentials with what's in database
-router.post('/login', async (req, res) => {
-    try {
-        const {
-            email,
-            password
-        } = req.body;
+router.post("/login", async (req, res) => {
+	try {
+		const { email, password } = req.body;
 
-        // validate
-        if (!email || !password)
-            return res.status(400).json({
-                msg: 'Not all fields have been entered'
-            });
+		// validate
+		if (!email || !password)
+			return res.status(400).json({
+				msg: "Not all fields have been entered",
+			});
 
-        const user = await User.findOne({
-            email
-        });
+		const user = await User.findOne({
+			email,
+		});
 
-        if (!user)
-            return res.status(400).json({
-                msg: 'No account with this email has been registered'
-            });
-        // password --> just inputted, user.password --> hashed password 
-        const isMatch = await bycrpt.compare(password, user.password);
+		if (!user)
+			return res.status(400).json({
+				msg: "No account with this email has been registered",
+			});
+		// password --> just inputted, user.password --> hashed password
+		const isMatch = await bycrpt.compare(password, user.password);
 
-        if (!isMatch)
-            return res.status(400).json({
-                msg: 'Invalid credentials. Please try again.'
-            });
+		if (!isMatch)
+			return res.status(400).json({
+				msg: "Invalid credentials. Please try again.",
+			});
 
-        // User is clear to go, so get jsonwebtoken (jwt)
-        const token = jwt.sign({
-            id: user._id
-        }, process.env.JWT_SECRET);
+		// User is clear to go, so get jsonwebtoken (jwt)
+		const token = jwt.sign(
+			{
+				id: user._id,
+			},
+			process.env.JWT_SECRET
+		);
 
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                displayName: user.displayName,
-                email: user.email
-            }
-        });
+		res.json({
+			token,
+			user: {
+				id: user._id,
+				displayName: user.displayName,
+				email: user.email,
+			},
+		});
 
-        // check jwt token on https://jwt.io/
-
-    } catch (err) {
-        res.status(500).send({
-            err: err.message
-        });
-    }
+		// check jwt token on https://jwt.io/
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
 });
 
 // need to be logged in, and only you can delete your account
 // middleware will run before this function
 
-router.delete('/delete', auth, async (req, res) => {
-    try {
-        const deletedUser = await User.findByIdAndDelete(req.user);
+router.delete("/delete", auth, async (req, res) => {
+	try {
+		const deletedUser = await User.findByIdAndDelete(req.user);
 
-        res.json(deletedUser);
-    } catch (err) {
-        res.status(500).send({
-            err: err.message
-        });
-    }
+		res.json(deletedUser);
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
 });
 
-router.post('/tokenIsValid', async (req, res) => {
-    try {
-        const token = req.header('x-auth-token');
+router.post("/tokenIsValid", async (req, res) => {
+	try {
+		const token = req.header("x-auth-token");
 
-        if (!token) {
-            return res.json(false);
-        }
+		if (!token) {
+			return res.json(false);
+		}
 
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
+		const verified = jwt.verify(token, process.env.JWT_SECRET);
 
-        if (!verified) {
-            return res.json(false);
-        }
-        const user = await User.findById(verified.id);
+		if (!verified) {
+			return res.json(false);
+		}
+		const user = await User.findById(verified.id);
 
-        if (!user) {
-            return res.json(false);
-        }
+		if (!user) {
+			return res.json(false);
+		}
 
-        return res.json(true);
-    } catch (err) {
-        res.status(500).send({
-            err: err.message
-        });
-    }
+		return res.json(true);
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
 });
 
 module.exports = router;
