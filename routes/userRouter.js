@@ -1,27 +1,27 @@
-const router = require("express").Router();
-const bycrpt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const auth = require("../middleware/auth");
-const User = require("../models/userModel");
+const router = require('express').Router();
+const bycrpt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const auth = require('../middleware/auth');
+const User = require('../models/userModel');
 
-router.post("/register", async (req, res) => {
+router.post('/register', async (req, res) => {
 	try {
 		let { email, password, passwordCheck, displayName } = req.body;
 
 		// validate
 		if (!email || !password || !passwordCheck)
 			return res.status(400).json({
-				msg: "Not all fields have been entered",
+				msg: 'Not all fields have been entered',
 			});
 
 		if (password.length < 5)
 			return res.status(400).json({
-				msg: "Passwords needs to be at least 5 characters long",
+				msg: 'Passwords needs to be at least 5 characters long',
 			});
 
 		if (password !== passwordCheck)
 			return res.status(400).json({
-				msg: "Enter the same password twice",
+				msg: 'Enter the same password twice',
 			});
 
 		const existingUser = await User.findOne({
@@ -30,7 +30,7 @@ router.post("/register", async (req, res) => {
 
 		if (existingUser)
 			return res.status(400).json({
-				msg: "Account with this email already exists",
+				msg: 'Account with this email already exists',
 			});
 
 		if (!displayName) displayName = email;
@@ -56,14 +56,14 @@ router.post("/register", async (req, res) => {
 });
 
 // logging in --> comparing credentials with what's in database
-router.post("/login", async (req, res) => {
+router.post('/login', async (req, res) => {
 	try {
 		const { email, password } = req.body;
 
 		// validate
 		if (!email || !password)
 			return res.status(400).json({
-				msg: "Not all fields have been entered",
+				msg: 'Not all fields have been entered',
 			});
 
 		const user = await User.findOne({
@@ -72,14 +72,14 @@ router.post("/login", async (req, res) => {
 
 		if (!user)
 			return res.status(400).json({
-				msg: "No account with this email has been registered",
+				msg: 'No account with this email has been registered',
 			});
 		// password --> just inputted, user.password --> hashed password
 		const isMatch = await bycrpt.compare(password, user.password);
 
 		if (!isMatch)
 			return res.status(400).json({
-				msg: "Invalid credentials. Please try again.",
+				msg: 'Invalid credentials. Please try again.',
 			});
 
 		// User is clear to go, so get jsonwebtoken (jwt)
@@ -110,7 +110,7 @@ router.post("/login", async (req, res) => {
 // need to be logged in, and only you can delete your account
 // middleware will run before this function
 
-router.delete("/delete", auth, async (req, res) => {
+router.delete('/delete', auth, async (req, res) => {
 	try {
 		const deletedUser = await User.findByIdAndDelete(req.user);
 
@@ -122,9 +122,9 @@ router.delete("/delete", auth, async (req, res) => {
 	}
 });
 
-router.post("/tokenIsValid", async (req, res) => {
+router.post('/tokenIsValid', async (req, res) => {
 	try {
-		const token = req.header("x-auth-token");
+		const token = req.header('x-auth-token');
 
 		if (!token) {
 			return res.json(false);

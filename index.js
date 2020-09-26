@@ -1,7 +1,7 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+require('dotenv').config();
 
 // setup express
 
@@ -31,7 +31,7 @@ mongoose.connect(
 	},
 	(err) => {
 		if (err) throw err;
-		console.log("MongoDB connection established.");
+		console.log('MongoDB connection established.');
 	}
 );
 
@@ -39,4 +39,4 @@ mongoose.connect(
 // create routes --> how we interact with Database
 
 // setup routes
-app.use("/users", require("./routes/userRouter"));
+app.use('/users', require('./routes/userRouter'));
