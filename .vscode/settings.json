@@ -1,0 +1,11 @@
+{
+    "eslint.nodePath": "",
+    "eslint.options": {
+        "env": {
+            "es8": true
+        },
+        "parserOptions": {
+            "ecmaVersion": 8 // or 7,8,9
+        }
+    }
+}
