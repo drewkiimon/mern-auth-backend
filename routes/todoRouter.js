@@ -5,8 +5,6 @@ const Todo = require('../models/todoModel');
 router.post('/', auth, async (req, res) => {
 	try {
 		const { title } = req.body;
-		console.log(req.body);
-		console.log(title);
 		// validation
 
 		if (!title)
