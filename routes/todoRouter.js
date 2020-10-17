@@ -2,6 +2,18 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const Todo = require('../models/todoModel');
 
+router.get('/', auth, async (req, res) => {
+	try {
+		const todos = await Todo.find({ userId: req.user });
+
+		res.json(todos);
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
+});
+
 router.post('/', auth, async (req, res) => {
 	try {
 		const { title } = req.body;
@@ -27,17 +39,6 @@ router.post('/', auth, async (req, res) => {
 	}
 });
 
-router.get('/all', auth, async (req, res) => {
-	try {
-		const todos = await Todo.find({ userId: req.user });
-		res.json(todos);
-	} catch (err) {
-		res.status(500).send({
-			err: err.message,
-		});
-	}
-});
-
 // A user might be authenticated, but we need to make sure they own this todo
 router.delete('/:id', auth, async (req, res) => {
 	try {
@@ -54,6 +55,39 @@ router.delete('/:id', auth, async (req, res) => {
 
 		const deleted = await Todo.findByIdAndDelete(req.params.id);
 		res.json(deleted);
+	} catch (err) {
+		res.status(500).send({
+			err: err.message,
+		});
+	}
+});
+
+router.patch('/:id', auth, async (req, res) => {
+	try {
+		const { title } = req.body;
+
+		if (!title)
+			return res.status(400).json({
+				msg: 'Not all fields have been entered',
+			});
+
+		const updatedTodo = await Todo.findOneAndUpdate(
+			{
+				userId: req.user,
+				_id: req.params.id,
+			},
+			{ title }
+		);
+
+		if (!updatedTodo)
+			return res.status(400).json({
+				msg:
+					'No todo found with this ID that belongs to the current user',
+			});
+
+		updatedTodo.title = title;
+
+		res.json(updatedTodo);
 	} catch (err) {
 		res.status(500).send({
 			err: err.message,
